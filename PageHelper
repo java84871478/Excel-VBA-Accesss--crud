@@ -1,0 +1,154 @@
+
+Option Explicit
+
+
+Dim rs As ADODB.Recordset
+Dim rsds As ADODB.Recordset
+Dim rsPage As Long  '当前处于第几页
+Dim labelName As String
+
+'分页查询
+ Sub queryPageFromRS(r As ADODB.Recordset, lbName As String)
+ rsPage = 1
+ 
+  labelName = lbName
+    Set rs = r
+   Call addrows(rsPage) '调用子过程显示第一页记录
+  
+    
+End Sub
+
+'分页查询
+ Sub queryPage(sql As String, lbName As String)
+ rsPage = 1
+ 
+  labelName = lbName
+    Dim cba As New DBhelper
+    Set rs = cba.query(sql)
+    
+   Call addrows(rsPage) '调用子过程显示第一页记录
+  
+    
+End Sub
+
+Private Sub clearContents()
+
+ Range("A4:AA18").clearContents
+
+End Sub
+Private Sub addrows(mypage As Long)
+     On Error Resume Next
+     Dim i As Long, j As Long
+     Dim num As Long, endrow As Long  '记数
+
+     '创建局部recorset对象rsds,保存rs 记录集中当前页的数据
+     Set rsds = New ADODB.Recordset
+     For i = 0 To rs.fields.Count - 1
+     'append追加的意思，字段名称，字段类型，字段大小
+        rsds.fields.Append rs.fields(i).Name, rs.fields(i).Type, rs.fields(i).DefinedSize
+     Next
+     '打开局部recorset 对象rsds
+     rsds.Open
+     rs.PageSize = 15 '重置rs 每页显示的记录条数(pagesize 表示记录集的每页的记录条数)
+     rs.AbsolutePage = mypage '重置rs的当前记录页(跳到这页的第一条记录）
+     '当rs 的当前记录页保存到rsds 之中
+     For i = 1 To CLng(rs.PageSize)
+     
+         If rs.EOF Then Exit For
+         
+        rsds.AddNew '添加一条记录
+        For j = 0 To rs.fields.Count - 1
+          rsds.fields(j).value = rs.fields(j).value
+        Next j
+       
+        rs.MoveNext
+     Next i
+    
+     rsds.MoveFirst '定位到第一条记录
+     
+  clearContents
+  
+     '添加记录i的类型在32位系统自动为integer或long，在64位自动为longlong,数据转换,不然会编译错误类型不匹配
+     
+        For i = 4 To CLng(rsds.RecordCount) + 3
+       
+            num = num + 1
+            Cells(i, 1) = IIf(mypage > 1, num + rs.PageSize * (mypage - 1), num)
+            
+             Cells(i, rsds.fields.Count + 1) = CStr(rsds.fields(0))
+            For j = 1 To rsds.fields.Count - 1
+            
+            Cells(i, j + 1) = rsds.fields(j)
+            If rsds.fields(j).Type = adDate Then
+            Cells(i, j + 1).NumberFormatLocal = "YYYY-MM-DD"
+            End If
+
+            Next j
+           
+            rsds.MoveNext
+         Next i
+         
+       ' ActiveSheet.OLEObjects(labelName).Object.caption = "第 " & mypage & "/" & rs.PageCount & " 页,共" & rs.RecordCount & "条记录"
+ActiveSheet.Shapes(labelName).TextFrame.Characters.Text = "第 " & mypage & "/" & rs.PageCount & " 页,共" & rs.RecordCount & "条记录"
+ '  plabelText = "第 " & mypage & "/" & rs.PageCount & " 页,共" & rs.RecordCount & "条记录"
+   ' lb = ActiveSheet.OLEObjects(labelName).Object
+    
+    
+'endrow = ActiveSheet.Cells(ActiveSheet.Rows.Count, "B").End(xlUp).Row
+'If endrow > 3 Then
+  With Range("A4" & ":AA18").Borders
+   .LineStyle = xlContinuous
+   .Weight = xlThin
+   .ColorIndex = 37
+  End With
+'End If
+
+End Sub
+
+
+'切换到第一页
+ Sub dyy_Click()
+
+ rsPage = 1
+ Call addrows(rsPage)
+ 
+End Sub
+'切换到上一页
+ Sub syy_Click()
+
+ If rsPage > 1 And CLng(rs.PageCount) > 0 Then
+ rsPage = rsPage - 1
+ Call addrows(rsPage)
+ End If
+ 
+End Sub
+
+
+
+'切换到下一页
+ Sub xyy_Click()
+  
+ If rsPage <> CLng(rs.PageCount) And CLng(rs.PageCount) > 0 Then
+ rsPage = rsPage + 1
+ Call addrows(rsPage)
+ 
+ End If
+ 
+End Sub
+'切换到最末页
+ Sub zmy_Click()
+ 
+'64位longlong类型 转换32位为long
+ rsPage = CLng(rs.PageCount)
+ Call addrows(rsPage)
+
+End Sub
+
+
+
+
+
+Private Sub Class_Terminate()
+Set rs = Nothing
+Set rsds = Nothing
+End Sub
